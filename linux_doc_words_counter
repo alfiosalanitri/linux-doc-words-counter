@@ -1,0 +1,120 @@
+#!/bin/bash
+#
+# NAME
+# 	linux_doc_words_counter - count all words and characters of multiple .doc|.txt files
+#
+# SYNOPSIS
+#	linux_doc_words_counter /path/to/archive.zip
+#
+# DESCRIPTION
+#	linux_doc_words_counter is a simple bash script that count all words and characters of multiple documents.
+#
+# INSTALLATION
+#	sudo mv linux_doc_words_counter /usr/bin
+#	sudo chmod +x /usr/bin/linux_doc_words_counter
+#
+# REQUIREMENTS
+#   - a linux distro
+#   - sudo privileges
+#	- unzip package
+#	- catdoc package
+#	
+# AUTHOR: 
+#	linux_doc_words_counter is written by Alfio Salanitri <www.alfiosalanitri.it> and are licensed under the terms of the GNU General Public License, version 2 or higher.
+# 
+# 
+#############################################################
+# Icons	and color	
+# https://www.techpaste.com/2012/11/print-colored-text-background-shell-script-linux/
+# https://apps.timwhitlock.info/emoji/tables/unicode		#
+#############################################################
+red='\033[0;31m'
+green='\033[0;32m'
+nocolor='\033[0m'
+icon_ko='\xe2\x9c\x97'
+icon_wait='\xE2\x8C\x9B'
+
+#############################################################
+# Sudo password         									#
+#############################################################
+sudo printf "${icon_wait} Wait please...\n"
+
+#############################################################
+# Check Dependencies										#
+#############################################################
+# Check unzip
+if ! command -v unzip &> /dev/null; then
+	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}unzip${nocolor} is required. sudo apt install unzip\n"
+	exit 1;
+fi
+# Check catdoc
+if ! command -v catdoc &> /dev/null; then
+	printf "[${red}${icon_ko}${nocolor}] Sorry, but ${green}catdoc${nocolor} is required. sudo apt install catdoc\n"
+	exit 1;
+fi
+
+#############################################################
+# Check Required variables									#
+#############################################################
+if [ ! -f "$1" ]; then
+    printf "[${red}${icon_ko}${nocolor}] Type the zip file (full path).\n";
+    exit 1;
+fi
+
+#############################################################
+# Start									#
+#############################################################
+filezip=$1
+
+# check zip integrity
+if [ -z "$(unzip -t $filezip | grep "No errors detected")" ]; then
+    printf "[${red}${icon_ko}${nocolor}] The $filezip file isnt't a valid zip archive.\n";
+    exit 1;
+fi
+
+# create temp dir
+temp_dir=$(mktemp -d -t doc-word-character-counter-XXXXXXXXXX)
+
+# unzip archive
+unzip -j $filezip -d $temp_dir > /dev/null 2>&1
+
+# go to temp
+cd $temp_dir;
+
+# store current dir
+current_directory=$(pwd)
+
+# create txt dir
+mkdir txt
+
+# convert .doc files to txt
+for file in *.doc ; do 
+    sudo catdoc "${current_directory}/$file" > "${current_directory}/txt/${file}.txt"
+done
+
+# mv all .txt files
+mv *.txt "${current_directory}/txt/"
+
+# go to txt dir
+cd txt
+
+# print output
+printf "\e[4mWords\e[0m\t\t\e[4mCharacters\e[0m\t\e[4mFile\e[0m\n"
+# save each line in the results.txt
+for file in *.txt ; do 
+    words=$(wc -wc "$file" | awk '{ print $1}')
+    characters=$(wc -wc "$file" | awk '{ print $2 }')
+    name=$(echo "$file" | sed 's/\s\+/-/g')
+    printf "%s\t\t%s\t\t'%s'\n" "$words" "$characters" "$name"
+done | column -t -s "$" > results.txt
+cat results.txt
+echo "-------------------------------------------------------"
+printf "${green}Total words:${nocolor} %d\n" $(awk '{s+=$1} END {print s}' results.txt)
+printf "${green}Total characters:${nocolor} %d\n" $(awk '{s+=$2} END {print s}' results.txt)
+rm results.txt
+printf "${green}Total files:${nocolor} %d\n" $(ls *.txt | wc -l)
+echo "-------------------------------------------------------"
+
+#clear temp dir
+sudo rm -r $temp_dir
+exit 0
