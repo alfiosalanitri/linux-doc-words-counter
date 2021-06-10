@@ -87,9 +87,11 @@ current_directory=$(pwd)
 # create txt dir
 mkdir txt
 
-# convert .doc files to txt
+# convert .doc files to txt if exists
 for file in *.doc ; do 
-    sudo catdoc "${current_directory}/$file" > "${current_directory}/txt/${file}.txt"
+    if [ -f "${current_directory}/$file" ]; then
+        sudo catdoc "${current_directory}/$file" > "${current_directory}/txt/${file}.txt"
+    fi
 done
 
 # mv all .txt files
